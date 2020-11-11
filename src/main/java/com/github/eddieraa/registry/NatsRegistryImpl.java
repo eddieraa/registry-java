@@ -42,6 +42,7 @@ public class NatsRegistryImpl implements Registry {
     final Gson gson;// Thread safe
 
     boolean alive = true;
+    boolean paused = false;
 
     protected NatsRegistryImpl(Connection conn, Options opts) {
         this.conn = conn;
@@ -57,9 +58,12 @@ public class NatsRegistryImpl implements Registry {
     private void runThread() {
         executor.submit(() -> {
             while (alive) {
-                for (Service s : registeredServices.values()) {
-                    pubRegister(s);
+                if (!paused) {
+                    for (Service s : registeredServices.values()) {
+                        pubRegister(s);
+                    }
                 }
+                
                 try {
                     if (alive)
                         Thread.sleep(opts.registeredInterval);
@@ -223,8 +227,19 @@ public class NatsRegistryImpl implements Registry {
         registeredServices.remove(service.name + service.address);
         Subscription sub = subscriptions.get("ping" + service.name);
         if (sub != null) {
-            sub.unsubscribe();
+            dispatcher.unsubscribe(sub);
+            subscriptions.remove("ping"+service.name);
         }
+    }
+
+    @Override
+    public void pause() {
+        paused = true;   
+    }
+
+    @Override
+    public void resume() {
+        paused = false;
     }
 
     void ping(String name) {
@@ -249,7 +264,7 @@ public class NatsRegistryImpl implements Registry {
     public void close() throws RegistryException {
         alive = false;
         for (Subscription s : subscriptions.values()) {
-            s.unsubscribe();
+            dispatcher.unsubscribe(s);
         }
         subscriptions.clear();
         registeredServices.clear();

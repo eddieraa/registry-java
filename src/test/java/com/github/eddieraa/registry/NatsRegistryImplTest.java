@@ -90,7 +90,7 @@ public class NatsRegistryImplTest {
             assertNotNull(s);
             System.out.println(s.name+" "+s.address);
         }
-        
+        reg.close();
         
     }
     

@@ -18,4 +18,5 @@ public class RegistryFactory {
         RegistryFactory.instance = new NatsRegistryImpl(conn, opts);
         return RegistryFactory.instance;
     }
+    
 }
