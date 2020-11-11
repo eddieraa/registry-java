@@ -84,6 +84,7 @@ public class NatsRegistryImplTest {
         assertNotNull(conn);
         Registry reg = RegistryFactory.newNaRegistry(conn, new Options.Builder().addFilter(new LoadBalanceFilter()).build());
         assertNotNull(reg);
+        reg.register(new Service.Builder("java-test", "localhost:5665").build());
         reg.observe("httptest");
         for (int n=0;n<100;n++) {
             Service s = reg.getService("httptest");

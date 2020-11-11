@@ -21,7 +21,7 @@ public class ServiceJsonAdapter extends TypeAdapter<Service> {
         write(out, "add",s.address);
         if (s.timestamp!=null) {
             out.name("t");
-            out.endObject();
+            out.beginObject();
             out.name("registered").value(s.timestamp.registered);
             out.name("duration").value(s.timestamp.duration);
             out.endObject();
