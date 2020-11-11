@@ -50,6 +50,10 @@ public class Service {
         this.version = version;
     }
 
+    public int getPort() {
+        String[] split = this.address.split(":");
+        return Integer.parseInt(split[1]);
+    }
 
     class Timestamps {
         long registered;
