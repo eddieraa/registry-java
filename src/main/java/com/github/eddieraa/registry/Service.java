@@ -55,4 +55,44 @@ public class Service {
         long registered;
         int duration;
     }
+
+    public static class Builder {
+        final String name;
+        String network;
+        final String address;
+        String url;
+        String version;
+        String host;
+        public Builder(String name, String address) {
+            this.name = name;
+            this.address = address;
+        }
+        public Builder setVersion(String version) {
+            this.version = version;
+            return this;
+        }
+        public Builder setUrl(String url) {
+            this.url = url;
+            return this;
+        }
+        public Builder setHost(String host) {
+            this.host = host;
+            return this;
+        }
+        public Builder setNetwork(String network){
+            this.network = network;
+            return this;
+        }
+        public Service build() {
+            Service s = new Service();
+            s.name = name;
+            s.address = address;
+            s.host = host;
+            s.network = network;
+            s.url = url;
+            s.version = version;
+            return s;
+        }
+
+    }
 }

@@ -6,9 +6,11 @@ import io.nats.client.Nats;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -25,10 +27,13 @@ public class NatsRegistryImplTest {
         String json = "{\"add\":\"127.0.0.1:34465\",\"name\":\"httptest\"}";
         Service s = gson.fromJson(json, Service.class);
         assertNotNull(s);
+        assertEquals("httptest", s.name);
         json = "{\"t\":{\"Duration\":20000}}";
         s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
         //Service s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
         assertNotNull(s);
+        assertEquals(20000, s.timestamp.duration);
+        assertNull(s.name);
         json = "{\"add\":\"127.0.0.1:34465\",\"name\":\"httptest\",\"t\":{\"Registered\":1605016819305899785,\"Duration\":20000}}";
         s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
         assertNotNull(s);
@@ -41,17 +46,52 @@ public class NatsRegistryImplTest {
         //Service s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
         assertNotNull(s);
         assertEquals("127.0.0.1:34465", s.address);
+        assertEquals(20000, s.timestamp.duration);
  
+    }
+
+    @Test
+    public void testLoadBalancer() {
+        List<Service> list = new ArrayList<>();
+        LoadBalanceFilter filter = new LoadBalanceFilter();
+        String add1 = "127.0.0.1:4431";
+        String add2 = "127.0.0.1:4432";
+        String add3 = "127.0.0.1:4433";
+        list.add(new Service.Builder("test", add1).build()) ;
+        assertEquals(add1, filter.filter(list).get(0).address);
+        assertEquals(add1, filter.filter(list).get(0).address);
+
+        list.add(new Service.Builder("test", add2).build()) ;
+        filter = new LoadBalanceFilter();
+        assertEquals(add1, filter.filter(list).get(0).address);
+        assertEquals(add2, filter.filter(list).get(0).address);
+        assertEquals(add1, filter.filter(list).get(0).address);
+        assertEquals(add2, filter.filter(list).get(0).address);
+
+        list.add(new Service.Builder("test", add3).build()) ;
+        filter = new LoadBalanceFilter();
+        assertEquals(add1, filter.filter(list).get(0).address);
+        assertEquals(add2, filter.filter(list).get(0).address);
+        assertEquals(add3, filter.filter(list).get(0).address);
+        assertEquals(add1, filter.filter(list).get(0).address);
+
+
     }
 
     @Test
     public void test() throws IOException, InterruptedException, RegistryException {
         Connection conn = Nats.connect();
         assertNotNull(conn);
-        Registry reg = RegistryFactory.newNaRegistry(conn);
+        Registry reg = RegistryFactory.newNaRegistry(conn, new Options.Builder().addFilter(new LoadBalanceFilter()).build());
         assertNotNull(reg);
-        Service s = reg.getService("httptest");
-        assertNotNull(s);
+        reg.observe("httptest");
+        for (int n=0;n<100;n++) {
+            Service s = reg.getService("httptest");
+            assertNotNull(s);
+            System.out.println(s.name+" "+s.address);
+        }
+        
+        
     }
     
 }

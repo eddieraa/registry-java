@@ -2,6 +2,7 @@ package com.github.eddieraa.registry;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,24 +29,21 @@ public class NatsRegistryImpl implements Registry {
     static final String TOPIC_REGISTER = "register";
     static final String TOPIC_UNREGISTER = "unregister";
     static final String TOPIC_PING = "ping";
+    static Logger log = Logger.getLogger(NatsRegistryImpl.class.getName());
 
     // Parameters
-    String mainTopic = "registry";
-    long registeredInterval = 2000;
-    long readTimeout = 50000;// milliseconds
-
-    Map<String, Subscription> subscriptions = new HashMap<>();
-    Map<String, Service> registeredServices = new HashMap<>();
+    final Options opts;
+    final Map<String, Subscription> subscriptions = new HashMap<>();
+    final Map<String, Service> registeredServices = new HashMap<>();
     final Dispatcher dispatcher;
-    static Logger log = Logger.getLogger(NatsRegistryImpl.class.getName());
-    ExecutorService executor = Executors.newSingleThreadExecutor();
-    boolean alive = true;
-    Map<String, Observe> observers = new HashMap<>();
-    Map<String, Map<String, Service>> m = new HashMap<>();
-    List<Filter> filters = new ArrayList<>();
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final Map<String, Observe> observers = new HashMap<>();
+    final Map<String, Map<String, Service>> m = new HashMap<>();
     final Gson gson;// Thread safe
 
-    protected NatsRegistryImpl(Connection conn) {
+    boolean alive = true;
+
+    protected NatsRegistryImpl(Connection conn, Options opts) {
         this.conn = conn;
         dispatcher = createDispatcher();
         runThread();
@@ -53,6 +51,7 @@ public class NatsRegistryImpl implements Registry {
         GsonBuilder builder = new GsonBuilder();
         builder.registerTypeAdapter(Service.class, new ServiceJsonAdapter());
         gson = builder.create();
+        this.opts = opts;
     }
 
     private void runThread() {
@@ -63,11 +62,10 @@ public class NatsRegistryImpl implements Registry {
                 }
                 try {
                     if (alive)
-                        Thread.sleep(registeredInterval);
+                        Thread.sleep(opts.registeredInterval);
                 } catch (InterruptedException e) {
                     log.log(Level.WARNING, e.getMessage(), e);
                     Thread.currentThread().interrupt();
-                    ;
                 }
             }
         });
@@ -80,7 +78,7 @@ public class NatsRegistryImpl implements Registry {
     }
 
     String buildMessage(String... names) {
-        StringBuilder b = new StringBuilder(mainTopic);
+        StringBuilder b = new StringBuilder(opts.mainTopic);
         for (String n : names) {
             b.append('/').append(n);
         }
@@ -118,7 +116,7 @@ public class NatsRegistryImpl implements Registry {
     }
 
     void subRegister(String name) {
-        dispatcher.subscribe(buildMessage(TOPIC_REGISTER, name), msg -> {
+        Subscription sub = dispatcher.subscribe(buildMessage(TOPIC_REGISTER, name), msg -> {
             log.info("receive new message from " + msg.getSubject());
             Service s = parse(msg.getData());
             Observe o = observers.get(name);
@@ -132,15 +130,16 @@ public class NatsRegistryImpl implements Registry {
             }
             Service old = services.get(name + s.address);
             if (old == null) {
-                services.put(name + s.address, old);
+                services.put(name + s.address, s);
             } else {
                 old.timestamp = s.timestamp;
             }
         });
+        subscriptions.put("reg" + name, sub);
     }
 
     void subUnregister(String name) {
-        dispatcher.subscribe(buildMessage(TOPIC_UNREGISTER, name), msg -> {
+        Subscription sub = dispatcher.subscribe(buildMessage(TOPIC_UNREGISTER, name), msg -> {
             log.info(msg.toString());
             Service s = gson.fromJson(new String(msg.getData(), UTF8), Service.class);
             Map<String, Service> services = m.get(name);
@@ -151,15 +150,17 @@ public class NatsRegistryImpl implements Registry {
                 services.remove(name + s.address);
             }
         });
+        subscriptions.put("unreg" + name, sub);
     }
 
     @Override
     public void register(Service service) throws RegistryException {
-        dispatcher.subscribe(buildMessage("ping", service.getName()), (msg) -> {
+        Subscription sub = dispatcher.subscribe(buildMessage("ping", service.getName()), (msg) -> {
             udpateService(service);
             conn.publish(msg.getReplyTo(), gson.toJson(service).getBytes(UTF8));
         });
         registeredServices.put(service.name + service.address, service);
+        subscriptions.put("ping" + service.name, sub);
         pubRegister(service);
     }
 
@@ -173,7 +174,7 @@ public class NatsRegistryImpl implements Registry {
 
     private List<Service> chainFilters(Map<String, Service> services) {
         List<Service> res = new ArrayList<>(services.values());
-        for (Filter f : filters) {
+        for (Filter f : opts.filters) {
             res = f.filter(res);
         }
         return res;
@@ -182,14 +183,14 @@ public class NatsRegistryImpl implements Registry {
     @Override
     public List<Service> getServices(String name) throws RegistryException {
         Map<String, Service> services = m.get(name);
-        if (m.containsKey(name)) {
+        if (services != null) {
             return chainFilters(services);
         }
         Observe observe = new Observe();
         observers.put(name, observe);
         BlockingDeque<Service> queue = new LinkedBlockingDeque<>();
         Service service = null;
-        if (!filters.isEmpty()) {
+        if (!opts.filters.isEmpty()) {
             observe.call = s -> {
                 Map<String, Service> _m = new HashMap<>(1);
                 _m.put(s.name, s);
@@ -205,7 +206,7 @@ public class NatsRegistryImpl implements Registry {
         observe(name);
         ping(name);
         try {
-            service = queue.poll(readTimeout, TimeUnit.MILLISECONDS);
+            service = queue.poll(opts.readTimeout, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             log.info("could not find service " + name);
             throw new RegistryException(e);
@@ -220,6 +221,10 @@ public class NatsRegistryImpl implements Registry {
         byte[] data = gson.toJson(service).getBytes(UTF8);
         conn.publish(buildMessage(TOPIC_UNREGISTER, service.name), data);
         registeredServices.remove(service.name + service.address);
+        Subscription sub = subscriptions.get("ping" + service.name);
+        if (sub != null) {
+            sub.unsubscribe();
+        }
     }
 
     void ping(String name) {
@@ -232,11 +237,31 @@ public class NatsRegistryImpl implements Registry {
         if (obs != null && obs.call == null) {
             return;
         } else if (obs == null) {
+            ping(name);
             obs = new Observe();
         }
         observers.put(name, obs);
         subRegister(name);
         subUnregister(name);
+    }
+
+    @Override
+    public void close() throws RegistryException {
+        alive = false;
+        for (Subscription s : subscriptions.values()) {
+            s.unsubscribe();
+        }
+        subscriptions.clear();
+        registeredServices.clear();
+        observers.clear();
+        m.clear();
+        executor.shutdown();
+        try {
+            dispatcher.drain(Duration.ofMillis(400));
+        } catch (Exception e) {
+            log.warning(e.getMessage());
+        }
+
     }
 
     class Observe {

@@ -8,4 +8,5 @@ public interface Registry {
     public List<Service> getServices(String name) throws RegistryException;
     public void unregister(Service service) throws RegistryException;
     public void observe(String name);
+    public void close() throws RegistryException;
 }
