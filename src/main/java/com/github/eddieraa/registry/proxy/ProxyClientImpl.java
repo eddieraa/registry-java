@@ -30,7 +30,7 @@ public class ProxyClientImpl implements ProxyClient {
             throw new IOException("network is null", e);
         }
         if (service == null) {
-            throw new UnknownHostException("service not found");
+            throw new UnknownHostException("proxy service "+proxyName+" not found");
         }
         if (service.getNetwork() == null) {
             throw new IOException("network is null");

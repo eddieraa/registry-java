@@ -59,7 +59,9 @@ public class NatsRegistryImpl implements Registry {
         executor.submit(() -> {
             while (alive) {
                 if (!paused) {
+                    log.info("Register");
                     for (Service s : registeredServices.values()) {
+                        log.info("Register "+s.name+ " "+s.address);
                         pubRegister(s);
                     }
                 }

@@ -12,7 +12,7 @@ public class RegistryFactory {
         return instance;
     }
     public static Registry newNaRegistry(Connection conn) throws RegistryException {
-        return new NatsRegistryImpl(conn, new Options());
+        return newNaRegistry(conn, new Options());
     }
     public static Registry newNaRegistry(Connection conn, Options opts) throws RegistryException {
         RegistryFactory.instance = new NatsRegistryImpl(conn, opts);
