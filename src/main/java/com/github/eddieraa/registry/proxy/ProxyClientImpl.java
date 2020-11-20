@@ -50,6 +50,9 @@ public class ProxyClientImpl implements ProxyClient {
 
     @Override
     public SocketFactory getSocketFactory(String name) throws RegistryException {
+        if (registry == null) {
+            throw new RegistryException("Registry server is not initialised");
+        }
         registry.observe(name);
 
         return new SocketFactory() {

@@ -30,7 +30,6 @@ public class NatsRegistryImpl implements Registry {
     static final String TOPIC_UNREGISTER = "unregister";
     static final String TOPIC_PING = "ping";
     static Logger log = Logger.getLogger(NatsRegistryImpl.class.getName());
-
     // Parameters
     final Options opts;
     final Map<String, Subscription> subscriptions = new HashMap<>();
@@ -48,7 +47,7 @@ public class NatsRegistryImpl implements Registry {
         this.conn = conn;
         dispatcher = createDispatcher();
         runThread();
-        log.setLevel(Level.FINEST);
+        
         GsonBuilder builder = new GsonBuilder();
         builder.registerTypeAdapter(Service.class, new ServiceJsonAdapter());
         gson = builder.create();
@@ -86,7 +85,7 @@ public class NatsRegistryImpl implements Registry {
     String buildMessage(String... names) {
         StringBuilder b = new StringBuilder(opts.mainTopic);
         for (String n : names) {
-            b.append('/').append(n);
+            b.append('.').append(n);
         }
         return b.toString();
     }
