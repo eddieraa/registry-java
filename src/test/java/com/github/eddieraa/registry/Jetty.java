@@ -1,8 +1,10 @@
 package com.github.eddieraa.registry;
 
-import com.github.eddieraa.registry.Registry;
-import com.github.eddieraa.registry.RegistryFactory;
-import com.github.eddieraa.registry.Service;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import com.github.eddieraa.registry.proxy.ProxyFilter;
 import com.github.eddieraa.registry.proxy.ProxyRegistryServlet;
 
 import org.eclipse.jetty.server.Server;
@@ -13,6 +15,7 @@ import io.nats.client.Connection;
 import io.nats.client.Nats;
 
 public class Jetty {
+    static Logger log = Logger.getLogger(Jetty.class.getName());
     static void setProperties() {
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime","true");
         System.setProperty("org.apache.commons.logging.Log","org.apache.commons.logging.impl.SimpleLog");
@@ -33,7 +36,11 @@ public class Jetty {
             ServletHandler handler = new ServletHandler();
             server.setHandler(handler);
             conn = Nats.connect();
-            reg = RegistryFactory.newNaRegistry(conn);
+            Options opts = new Options.Builder()
+                .addFilter(new ProxyFilter())
+                .addFilter(new LoadBalanceFilter())
+                .build();
+            reg = RegistryFactory.newNatsRegistry(conn,opts);
             reg.register(new Service.Builder("testproxy", "localhost:"+port).build());
            
 
@@ -52,8 +59,7 @@ public class Jetty {
                 if (reg!=null) reg.close();
                 if (conn!=null) conn.close();
             } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                log.log(Level.SEVERE,"Exception in Jetty", e);
             }
             
             

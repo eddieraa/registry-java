@@ -11,10 +11,10 @@ public class RegistryFactory {
     public static Registry instance() {
         return instance;
     }
-    public static Registry newNaRegistry(Connection conn) throws RegistryException {
-        return newNaRegistry(conn, new Options());
+    public static Registry newNatsRegistry(Connection conn) throws RegistryException {
+        return newNatsRegistry(conn, new Options());
     }
-    public static Registry newNaRegistry(Connection conn, Options opts) throws RegistryException {
+    public static Registry newNatsRegistry(Connection conn, Options opts) throws RegistryException {
         RegistryFactory.instance = new NatsRegistryImpl(conn, opts);
         return RegistryFactory.instance;
     }

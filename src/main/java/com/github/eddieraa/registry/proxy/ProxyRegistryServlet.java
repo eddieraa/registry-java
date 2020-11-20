@@ -1,7 +1,6 @@
 package com.github.eddieraa.registry.proxy;
 
 import javax.net.SocketFactory;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 
 import com.github.eddieraa.registry.Registry;
@@ -15,19 +14,17 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.mitre.dsmiley.httpproxy.ProxyServlet;
 
 public class ProxyRegistryServlet extends ProxyServlet {
-    public static final String P_SERVICENAME = "serviceName";
-
-    String serviceName = null;
-    Registry registry = null;
-
     /**
      *
      */
-    private static final long serialVersionUID = -6507466104596520004L;
-    @Override
-    public void init(ServletConfig config) throws ServletException {
-        super.init(config);
-    }
+    private static final long serialVersionUID = -4017426447663169295L;
+
+    public static final String P_SERVICENAME = "serviceName";
+
+    protected String serviceName = null;
+    protected Registry registry = null;
+
+   
     @Override
     public void init() throws ServletException {
         serviceName = getConfigParam(P_SERVICENAME);

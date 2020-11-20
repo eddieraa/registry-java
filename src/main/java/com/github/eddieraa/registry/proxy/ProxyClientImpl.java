@@ -5,6 +5,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.net.SocketFactory;
@@ -23,6 +24,26 @@ public class ProxyClientImpl implements ProxyClient {
     }
 
     Socket getSocket(String name) throws IOException {
+        Service service = null;
+        try {
+            service = registry.getService(name);
+        } catch (Exception e) {
+            log.log(Level.FINE, "Service {0} not found {1}",new String[]{name, e.getMessage()});
+        }
+        if (service == null) {
+            return getSocketFromProxy(name);
+        }
+        return socket(service.getAddress());
+    }
+
+    private Socket socket(String address) throws UnknownHostException, IOException {
+        String[] toks =  address.split(":");
+        String host = toks[0];                              
+        int port = Integer.parseInt(toks[1]);
+        return new Socket(host, port);
+    }
+
+    Socket getSocketFromProxy(String name) throws IOException {
         Service service;
         try {
             service = registry.getService(proxyName);
@@ -36,10 +57,7 @@ public class ProxyClientImpl implements ProxyClient {
             throw new IOException("network is null");
         }
 
-        String[] toks = service.getAddress().split(":");
-        String host = toks[0];
-        int port = Integer.parseInt(toks[1]);
-        Socket sock = new Socket(host, port);
+        Socket sock = socket(service.getAddress());
         OutputStream out = sock.getOutputStream();
         StringBuilder b = new StringBuilder();
         b.append("service ").append(name);

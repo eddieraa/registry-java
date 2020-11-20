@@ -82,7 +82,7 @@ public class NatsRegistryImplTest {
     public void test() throws IOException, InterruptedException, RegistryException {
         Connection conn = Nats.connect();
         assertNotNull(conn);
-        Registry reg = RegistryFactory.newNaRegistry(conn, new Options.Builder().addFilter(new LoadBalanceFilter()).build());
+        Registry reg = RegistryFactory.newNatsRegistry(conn, new Options.Builder().addFilter(new LoadBalanceFilter()).build());
         assertNotNull(reg);
         reg.register(new Service.Builder("java-test", "localhost:5665").build());
         reg.observe("httptest");
