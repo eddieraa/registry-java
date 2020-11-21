@@ -29,6 +29,7 @@ public class ProxyRegistryServlet extends ProxyServlet {
     public void init() throws ServletException {
         serviceName = getConfigParam(P_SERVICENAME);
         registry = RegistryFactory.instance();
+        registry.observe(serviceName);
         //MUST be after the code above
         super.init();
     }

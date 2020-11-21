@@ -50,6 +50,7 @@ public class Jetty {
             holder.setInitParameter(ProxyRegistryServlet.P_SERVICENAME, "httptest");
             holder.setInitParameter(ProxyRegistryServlet.P_MAXCONNECTIONS, "5");
             holder.setInitParameter(ProxyRegistryServlet.P_PRESERVEHOST, "true");
+            holder.setInitOrder(4);
             server.start();
             server.join();
         } catch (Exception e) {

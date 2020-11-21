@@ -122,8 +122,8 @@ public class NatsRegistryImpl implements Registry {
 
     void subRegister(String name) {
         Subscription sub = dispatcher.subscribe(buildMessage(TOPIC_REGISTER, name), msg -> {
-            log.info("receive new message from " + msg.getSubject());
             Service s = parse(msg.getData());
+            log.info(msg.getSubject()+" ("+s.address+")");
             Observe o = observers.get(name);
             if (o != null && o.call != null) {
                 o.call.call(s);
@@ -145,8 +145,8 @@ public class NatsRegistryImpl implements Registry {
 
     void subUnregister(String name) {
         Subscription sub = dispatcher.subscribe(buildMessage(TOPIC_UNREGISTER, name), msg -> {
-            log.info(msg.toString());
-            Service s = gson.fromJson(new String(msg.getData(), UTF8), Service.class);
+            Service s = parse(msg.getData());
+            log.info( msg.getSubject()+ " (" + s.address+")");
             Map<String, Service> services = m.get(name);
             if (services == null) {
                 return;
