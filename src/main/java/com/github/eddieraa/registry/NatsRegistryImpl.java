@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,7 +38,7 @@ public class NatsRegistryImpl implements Registry {
     final Dispatcher dispatcher;
     final ExecutorService executor = Executors.newSingleThreadExecutor();
     final Map<String, Observe> observers = new HashMap<>();
-    final Map<String, Map<String, Service>> m = new HashMap<>();
+    final Map<String, Map<String, Service>> m = Collections.synchronizedMap(new HashMap<>());
     final Gson gson;// Thread safe
 
     boolean alive = true;
@@ -45,41 +46,77 @@ public class NatsRegistryImpl implements Registry {
 
     protected NatsRegistryImpl(Connection conn, Options opts) {
         this.conn = conn;
-        dispatcher = createDispatcher();
-        runThread();
-        
+        this.opts = opts;
         GsonBuilder builder = new GsonBuilder();
         builder.registerTypeAdapter(Service.class, new ServiceJsonAdapter());
         gson = builder.create();
-        this.opts = opts;
+
+        dispatcher = createDispatcher();
+        runThread();
     }
 
-    private void runThread() {
-        executor.submit(() -> {
-            while (alive) {
-                if (!paused) {
-                    log.info("Register");
-                    for (Service s : registeredServices.values()) {
-                        log.info("Register "+s.name+ " "+s.address);
-                        pubRegister(s);
-                    }
-                }
-                
-                try {
-                    if (alive)
-                        Thread.sleep(opts.registeredInterval);
-                } catch (InterruptedException e) {
-                    log.log(Level.WARNING, e.getMessage(), e);
-                    Thread.currentThread().interrupt();
+    protected boolean checkServiceTTL(Service s) {
+        if (s.timestamp == null)
+            return true;
+        long dueTime = s.timestamp.registered + (long) opts.dueDurationFactor * s.timestamp.duration;
+        return dueTime > System.currentTimeMillis();
+    }
+
+    protected void checkServices() {
+        Map<String, Service> toDelete = new HashMap<>();
+        for (Map<String, Service> services : m.values()) {
+            for (Service s : services.values()) {
+                if (!checkServiceTTL(s)) {
+                    log.log(Level.INFO, "Service {0} ({1}) is outdated", new String[] { s.name, s.address });
+                    toDelete.put(s.name + " " + s.name+s.address, s);
                 }
             }
-        });
+        }
+        for (Entry<String, Service> e : toDelete.entrySet()) {
+            String[] toks = e.getKey().split(" ");
+            Map<String, Service> services = m.get(toks[0]);
+            if (services != null) {
+                Service s = services.remove(toks[1]);
+                if (s != null) {
+                    log.log(Level.INFO, "Service {0} deleted ", s);
+                }
+            }
+        }
+    }
+
+    private void task() {
+        try {
+            log.setLevel(Level.FINE);
+            log.log(Level.FINE, "Start registryControler with interval of {0}ms" , opts.registeredInterval);
+
+            Thread.currentThread().setName("RegistryControler");
+            while (alive) {
+                if (!paused) {
+                    for (Service s : registeredServices.values()) {
+                        pubRegister(s);
+                    }
+                    checkServices();
+                }
+
+                if (alive) {
+                    Thread.sleep(opts.registeredInterval);
+                }
+            }
+            log.info("Stop registryControler ");
+        } catch (InterruptedException e) {
+            log.log(Level.WARNING, e.getMessage(), e);
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            log.log(Level.SEVERE, "Error in RegistryControler", e);
+            e.printStackTrace();
+        }
+    }
+    private void runThread() {
+        executor.submit(this::task);
     }
 
     private Dispatcher createDispatcher() {
-        return conn.createDispatcher((msg) -> {
-            log.info("Receive new message " + msg.getSubject());
-        });
+        return conn.createDispatcher(msg -> log.info("Receive new message " + msg.getSubject()));
     }
 
     String buildMessage(String... names) {
@@ -123,14 +160,14 @@ public class NatsRegistryImpl implements Registry {
     void subRegister(String name) {
         Subscription sub = dispatcher.subscribe(buildMessage(TOPIC_REGISTER, name), msg -> {
             Service s = parse(msg.getData());
-            log.info(msg.getSubject()+" ("+s.address+")");
+            log.info(msg.getSubject() + " (" + s.address + ")");
             Observe o = observers.get(name);
             if (o != null && o.call != null) {
                 o.call.call(s);
             }
             Map<String, Service> services = m.get(name);
             if (services == null) {
-                services = new HashMap<>();
+                services = Collections.synchronizedMap(new HashMap<>());
                 m.put(name, services);
             }
             Service old = services.get(name + s.address);
@@ -146,7 +183,7 @@ public class NatsRegistryImpl implements Registry {
     void subUnregister(String name) {
         Subscription sub = dispatcher.subscribe(buildMessage(TOPIC_UNREGISTER, name), msg -> {
             Service s = parse(msg.getData());
-            log.info( msg.getSubject()+ " (" + s.address+")");
+            log.info(msg.getSubject() + " (" + s.address + ")");
             Map<String, Service> services = m.get(name);
             if (services == null) {
                 return;
@@ -160,7 +197,7 @@ public class NatsRegistryImpl implements Registry {
 
     @Override
     public void register(Service service) throws RegistryException {
-        Subscription sub = dispatcher.subscribe(buildMessage("ping", service.getName()), (msg) -> {
+        Subscription sub = dispatcher.subscribe(buildMessage("ping", service.getName()), msg -> {
             udpateService(service);
             conn.publish(msg.getReplyTo(), gson.toJson(service).getBytes(UTF8));
         });
@@ -197,16 +234,16 @@ public class NatsRegistryImpl implements Registry {
         Service service = null;
         if (!opts.filters.isEmpty()) {
             observe.call = s -> {
-                Map<String, Service> _m = new HashMap<>(1);
-                _m.put(s.name, s);
-                List<Service> res = chainFilters(_m);
+                Map<String, Service> mServices = new HashMap<>(1);
+                mServices.put(s.name, s);
+                List<Service> res = chainFilters(mServices);
                 if (!res.isEmpty()) {
                     queue.add(s);
                 }
             };
 
         } else {
-            observe.call = s -> queue.add(s);
+            observe.call = queue::add;
         }
         observe(name);
         ping(name);
@@ -229,13 +266,13 @@ public class NatsRegistryImpl implements Registry {
         Subscription sub = subscriptions.get("ping" + service.name);
         if (sub != null) {
             dispatcher.unsubscribe(sub);
-            subscriptions.remove("ping"+service.name);
+            subscriptions.remove("ping" + service.name);
         }
     }
 
     @Override
     public void pause() {
-        paused = true;   
+        paused = true;
     }
 
     @Override

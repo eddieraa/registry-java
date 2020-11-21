@@ -8,6 +8,7 @@ public class Options {
     long registeredInterval = 2000;
     long readTimeout = 500;// milliseconds
     List<Filter> filters = new ArrayList<>();
+    float dueDurationFactor = 1.5f;
 
     public String getMainTopic() {
         return mainTopic;

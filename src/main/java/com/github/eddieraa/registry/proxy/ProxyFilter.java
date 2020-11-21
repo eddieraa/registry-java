@@ -3,18 +3,21 @@ package com.github.eddieraa.registry.proxy;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.github.eddieraa.registry.Filter;
 import com.github.eddieraa.registry.Service;
 
 public class ProxyFilter implements Filter {
+    static Logger log = Logger.getLogger(ProxyFilter.class.getName());
     String hostname = null;
     public ProxyFilter() {
         try {
             InetAddress ip = InetAddress.getLocalHost();
             hostname = ip.getHostName();
         } catch (Exception e) {
-            //TODO: handle exception
+            log.log(Level.WARNING,"Could not get hostname: {0}",e.getMessage());
         }
     }
     @Override

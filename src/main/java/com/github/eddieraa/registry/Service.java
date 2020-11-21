@@ -60,6 +60,15 @@ public class Service {
         int duration;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder b = new StringBuilder();
+        b.append(name).append(" (").append(address).append(") ").append(host);
+        return b.toString();
+    }
+
+
+
     public static class Builder {
         final String name;
         String network;

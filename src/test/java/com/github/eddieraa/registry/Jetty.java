@@ -22,6 +22,7 @@ public class Jetty {
         System.setProperty("org.apache.commons.logging.simplelog.showdatetime","true");
         System.setProperty("org.apache.commons.logging.simplelog.log.org.apache.http","ERROR");
         System.setProperty("org.apache.commons.logging.simplelog.log.org.apache.http.wire","ERROR");
+        System.setProperty("java.util.logging.SimpleFormatter.format","%1$tF %1$tT,%1$tL %4$s %5$s %n");
 
     }
     
