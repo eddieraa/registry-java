@@ -46,7 +46,6 @@ public class Jetty {
            
 
             ServletHolder holder = handler.addServletWithMapping(ProxyRegistryServlet.class, "/proxy/*");
-            holder.setInitParameter("targetUri", "http://localhost:444" );
             holder.setInitParameter("log", "false");
             holder.setInitParameter(ProxyRegistryServlet.P_SERVICENAME, "httptest");
             holder.setInitParameter(ProxyRegistryServlet.P_MAXCONNECTIONS, "5");
