@@ -13,6 +13,15 @@ This service registry use nats (https://nats.io). No server is required. This im
 Client check the ttl.
 
 
+
+## Maven dependency
+```xml
+<dependency>
+    <groupId>com.github.eddieraa.registry</groupId>
+    <artifactId>registry-java</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
 ## Basic usage
 
 ```java
@@ -35,7 +44,5 @@ try {
 } finally {
     reg.close();
 }
-
-
 
 ```
