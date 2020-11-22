@@ -12,7 +12,7 @@ This service registry use nats (https://nats.io). No server is required. This im
 Client check the ttl.
 
 
-[golang implentation] (../registry)
+[golang implentation](../registry)
 
 ## Basic usage
 
