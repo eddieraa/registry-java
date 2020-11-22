@@ -4,6 +4,7 @@
 
 This service registry use nats (https://nats.io). No server is required. This implementation used pub/sub message for register/unregister service.
 
+[golang implentation](https://github.com/eddieraa/registry)
 
 ## Feature
 
@@ -11,8 +12,6 @@ This service registry use nats (https://nats.io). No server is required. This im
 * TTL: the registered services send periodiacaly a message on nats
 Client check the ttl.
 
-
-[golang implentation](../registry)
 
 ## Basic usage
 
