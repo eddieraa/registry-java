@@ -160,7 +160,7 @@ public class NatsRegistryImpl implements Registry {
     void subRegister(String name) {
         Subscription sub = dispatcher.subscribe(buildMessage(TOPIC_REGISTER, name), msg -> {
             Service s = parse(msg.getData());
-            log.info(msg.getSubject() + " (" + s.address + ")");
+            log.fine("rcv "+msg.getSubject() + " (" + s.address + ")");
             Observe o = observers.get(name);
             if (o != null && o.call != null) {
                 o.call.call(s);

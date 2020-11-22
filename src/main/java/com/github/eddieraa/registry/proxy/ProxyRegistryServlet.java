@@ -1,7 +1,10 @@
 package com.github.eddieraa.registry.proxy;
 
+import java.io.IOException;
 import javax.net.SocketFactory;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import com.github.eddieraa.registry.Registry;
 import com.github.eddieraa.registry.RegistryException;
@@ -70,6 +73,19 @@ public class ProxyRegistryServlet extends ProxyServlet {
         connectionManager.setDefaultMaxPerRoute(maxConnections);
         clientBuilder.setConnectionManager(connectionManager);
         return clientBuilder;
+    }
+
+    @Override
+    protected void service(HttpServletRequest servletRequest, HttpServletResponse servletResponse)
+            throws ServletException, IOException {
+        try {
+            super.service(servletRequest, servletResponse);
+        } catch (Exception e) {
+           servletResponse.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+           servletResponse.setHeader("Content-Type", "text/plain");
+           servletResponse.getWriter().write("Service \""+serviceName+"\" not available");
+        }
+       
     }
 
 }
