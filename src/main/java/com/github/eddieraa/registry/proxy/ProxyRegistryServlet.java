@@ -37,11 +37,6 @@ public class ProxyRegistryServlet extends ProxyServlet {
         super.init();
     }
 
-    @Override
-    protected String getConfigParam(String key) {
-        if (P_TARGET_URI.equals(key)) return "http://localhost:45465";
-        return super.getConfigParam(key);
-    }
 
     @Override
     //Override standard implementation
