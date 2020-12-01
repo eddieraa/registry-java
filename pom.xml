@@ -3,7 +3,7 @@
 
   <groupId>com.github.eddieraa.registry</groupId>
   <artifactId>registry-java</artifactId>
-  <version>0.0.2</version>
+  <version>0.0.3</version>
   <name>Service registry client</name>
   <description>Service registry base on nats pub/sub</description>
   <licenses>
