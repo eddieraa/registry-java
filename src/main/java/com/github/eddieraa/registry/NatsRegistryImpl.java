@@ -13,6 +13,7 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,13 +37,20 @@ public class NatsRegistryImpl implements Registry {
     final Map<String, Subscription> subscriptions = new HashMap<>();
     final Map<String, Service> registeredServices = new HashMap<>();
     final Dispatcher dispatcher;
-    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+        public Thread newThread(Runnable r) {
+            Thread t = Executors.defaultThreadFactory().newThread(r);
+            t.setDaemon(true);
+            return t;
+        }
+    });
     final Map<String, Observe> observers = new HashMap<>();
     final Map<String, Map<String, Service>> m = Collections.synchronizedMap(new HashMap<>());
     final Gson gson;// Thread safe
 
     boolean alive = true;
     boolean paused = false;
+ 
 
     protected NatsRegistryImpl(Connection conn, Options opts) {
         this.conn = conn;
@@ -50,7 +58,7 @@ public class NatsRegistryImpl implements Registry {
         GsonBuilder builder = new GsonBuilder();
         builder.registerTypeAdapter(Service.class, new ServiceJsonAdapter());
         gson = builder.create();
-
+        
         dispatcher = createDispatcher();
         runThread();
     }
