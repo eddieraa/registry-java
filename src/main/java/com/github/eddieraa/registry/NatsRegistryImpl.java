@@ -58,7 +58,7 @@ public class NatsRegistryImpl implements Registry {
         GsonBuilder builder = new GsonBuilder();
         builder.registerTypeAdapter(Service.class, new ServiceJsonAdapter());
         gson = builder.create();
-        
+        log.setLevel(opts.logLevel);
         dispatcher = createDispatcher();
         runThread();
     }

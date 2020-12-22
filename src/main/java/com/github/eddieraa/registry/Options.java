@@ -2,6 +2,7 @@ package com.github.eddieraa.registry;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 
 public class Options {
     String mainTopic = "registry";
@@ -9,6 +10,7 @@ public class Options {
     long readTimeout = 500;// milliseconds
     List<Filter> filters = new ArrayList<>();
     float dueDurationFactor = 1.5f;
+    Level logLevel = Level.INFO;
 
     public String getMainTopic() {
         return mainTopic;
@@ -62,6 +64,10 @@ public class Options {
         }
         public Builder addFilter(Filter filter) {
             this.opts.filters.add(filter);
+            return this;
+        }
+        public Builder withLogLevel(Level level) {
+            this.opts.logLevel = level;
             return this;
         }
 
