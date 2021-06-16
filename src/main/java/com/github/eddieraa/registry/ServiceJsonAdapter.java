@@ -1,8 +1,11 @@
 package com.github.eddieraa.registry;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
-
+import com.github.eddieraa.registry.Service.Timestamps;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
@@ -26,23 +29,69 @@ public class ServiceJsonAdapter extends TypeAdapter<Service> {
             out.name("duration").value(s.timestamp.duration);
             out.endObject();
         }
+        if (s.kv != null && !s.kv.isEmpty()) {
+            out.name("kv");
+            out.beginObject();
+            for (Entry<String,String> e : s.kv.entrySet()) {
+                out.name(e.getKey()).value(e.getValue());
+            }
+            out.endObject();
+        }
         out.endObject();
     }
+
+    Map<String,String> readKV(JsonReader in) throws IOException {
+        if (in.peek() == JsonToken.BEGIN_OBJECT) {
+            in.beginObject();
+        } 
+        Map<String, String> res = new HashMap<>();
+        while (in.peek() != JsonToken.END_OBJECT) {
+            if (in.peek() == JsonToken.NAME) {
+                String k = in.nextName();
+                if (in.peek() == JsonToken.STRING) {
+                    String v = in.nextString();
+                    res.put(k, v);
+                }
+            } else {
+                in.skipValue();
+            }
+        }
+        in.endObject();
+        return res;
+    }
+
+    Timestamps readTimestamps (JsonReader in, Service s) throws IOException {
+        Timestamps t =s.new Timestamps();
+        in.beginObject();
+        while (in.peek() != JsonToken.END_OBJECT) {
+            if (in.peek() == JsonToken.NAME) {
+                String name = in.nextName();
+                switch (name) {
+                    case "Registered":
+                    case "registered":
+                        t.registered = in.nextLong();
+                        break;
+                    case "Duration":
+                    case "duration":
+                        t.duration = in.nextInt();
+                        break;
+                }
+            } else {
+                in.skipValue();
+            }
+        }
+        in.endObject();
+        return t;
+    }
+
 
     @Override
     public Service read(JsonReader in) throws IOException {
         Service s = new Service();
         in.beginObject();
-        boolean inObject = false;
-        while (in.hasNext()) {
-            JsonToken token = in.peek();
-            if (token == JsonToken.BEGIN_OBJECT) {
-                in.beginObject();
-                inObject = true;
-                continue;
-            }
+        
+        while (in.hasNext() && in.peek()!=JsonToken.END_OBJECT) {
             String name = in.nextName();
-            
             
             switch (name) {
                 case "name":
@@ -64,27 +113,16 @@ public class ServiceJsonAdapter extends TypeAdapter<Service> {
                     s.host = in.nextString();
                     break;
                 case "t":
-                    s.timestamp = s.new Timestamps();
+                    s.timestamp = readTimestamps(in, s);
                     break;
-                case "Registered":
-                case "registered":
-                    s.timestamp.registered = in.nextLong();
+                
+                case "kv":
+                case "KV":
+                    s.kv = readKV(in);
                     break;
-                case "Duration":
-                case "duration":
-                    s.timestamp.duration = in.nextInt();
-                    break;
-                    
                 default:
                     in.skipValue();
                     break;
-            }
-            if (inObject) {
-                token = in.peek();
-                if (token == JsonToken.END_OBJECT) {
-                    inObject = false;
-                    in.endObject();
-                }
             }
             
         }

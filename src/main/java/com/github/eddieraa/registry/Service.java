@@ -1,5 +1,7 @@
 package com.github.eddieraa.registry;
 
+import java.util.Map;
+
 import com.google.gson.annotations.JsonAdapter;
 
 @JsonAdapter(ServiceJsonAdapter.class)
@@ -12,6 +14,7 @@ public class Service {
     String version;
     String host;
     Timestamps timestamp;
+    Map<String,String> kv;
 
     public String getAddress() {
         return address;

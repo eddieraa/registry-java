@@ -47,7 +47,19 @@ public class NatsRegistryImplTest {
         assertNotNull(s);
         assertEquals("127.0.0.1:34465", s.address);
         assertEquals(20000, s.timestamp.duration);
- 
+        json = "{\"t\":{\"duration\":20000},\"add\":\"127.0.0.1:34465\",\"name\":\"httptest\", \"kv\":{} } ";
+        s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
+        //Service s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
+        assertNotNull(s);
+        json = "{\"t\":{\"duration\":20000}, \"kv\":{\"toto\":\"titi\", \"node\":\"GEN\"} ,\"add\":\"127.0.0.1:34465\",\"name\":\"httptest\"} ";
+        s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
+        //Service s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
+        assertNotNull(s);
+        assertEquals(s.kv.get("toto"), "titi");
+        assertEquals(s.kv.get("node"), "GEN");
+        s.kv.put("json", "ok");
+        String sString = gson.toJson(s);
+        assertNotNull(sString);
     }
 
     @Test
