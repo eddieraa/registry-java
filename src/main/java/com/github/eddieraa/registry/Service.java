@@ -53,6 +53,14 @@ public class Service {
         this.version = version;
     }
 
+    public Map<String, String> getKv() {
+        return kv;
+    }
+
+    public void setKv(Map<String, String> kv) {
+        this.kv = kv;
+    }
+
     public int getPort() {
         String[] split = this.address.split(":");
         return Integer.parseInt(split[1]);
