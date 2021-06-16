@@ -60,6 +60,11 @@ public class NatsRegistryImplTest {
         s.kv.put("json", "ok");
         String sString = gson.toJson(s);
         assertNotNull(sString);
+        json = "{\"t\":{\"duration\":20000}, \"kv\":{\"toto\":\"titi\", \"node\":\"GEN\"} ,\"add\":\"127.0.0.1:34465\",\"name\":\"httptest\", \"xxx\":\"yyy\", \"obj1\":{\"x\":3} } ";
+        s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
+        //Service s = NatsRegistryImpl.parse(gson, json.getBytes(NatsRegistryImpl.UTF8));
+        assertNotNull(s);
+
     }
 
     @Test
